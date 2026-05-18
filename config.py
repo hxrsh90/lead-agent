@@ -40,12 +40,30 @@ class ICPConfig:
 
 
 class Settings(BaseSettings):
-    agent_mode: Literal["claude", "custom"] = Field(default="claude", alias="AGENT_MODE")
+    agent_mode: Literal["claude", "custom"] = Field(default="custom", alias="AGENT_MODE")
+
+    # Supported: anthropic | openrouter | openai | nim | bedrock
+    llm_provider: str = Field(default="openrouter", alias="LLM_PROVIDER")
 
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
+
     openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
     openrouter_model: str = Field(
         default="mistralai/mixtral-8x7b-instruct", alias="OPENROUTER_MODEL"
+    )
+
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+
+    nim_api_key: str = Field(default="", alias="NIM_API_KEY")
+    nim_model: str = Field(default="nvidia/llama-3.1-nemotron-70b-instruct", alias="NIM_MODEL")
+    nim_base_url: str = Field(default="https://integrate.api.nvidia.com/v1", alias="NIM_BASE_URL")
+
+    aws_access_key_id: str = Field(default="", alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str = Field(default="", alias="AWS_SECRET_ACCESS_KEY")
+    aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
+    bedrock_model_id: str = Field(
+        default="anthropic.claude-3-5-sonnet-20241022-v2:0", alias="BEDROCK_MODEL_ID"
     )
 
     apollo_api_key: str = Field(default="", alias="APOLLO_API_KEY")
@@ -66,13 +84,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_required_keys(self) -> "Settings":
+        import warnings
         if self.agent_mode == "claude" and not self.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY is required when AGENT_MODE=claude")
-        if self.agent_mode == "custom":
-            if not self.openrouter_api_key:
-                raise ValueError("OPENROUTER_API_KEY is required when AGENT_MODE=custom")
-            if not self.vibe_api_key:
-                raise ValueError("VIBE_API_KEY is required when AGENT_MODE=custom")
+            warnings.warn("ANTHROPIC_API_KEY not set — claude mode will fail at runtime")
+        if self.agent_mode == "custom" and not self.openrouter_api_key:
+            warnings.warn("OPENROUTER_API_KEY not set — set it via Settings tab or env var")
         return self
 
     model_config = {"env_file": ".env", "populate_by_name": True}
