@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceCare.ai — Lead Agent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: '#6366f1' } } }
+    }
+  </script>
+  <style>
+    .tab-active { border-bottom: 2px solid #6366f1; color: #6366f1; font-weight: 600; }
+    .card:hover { box-shadow: 0 4px 24px rgba(99,102,241,0.10); }
+    .fade { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    pre { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">V</div>
+    <span class="font-semibold text-lg text-gray-900">VoiceCare.ai Lead Agent</span>
+    <span id="mode-badge" class="ml-2 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">—</span>
+  </div>
+  <div class="flex items-center gap-3">
+    <select id="mode-select" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+      <option value="">Mode from .env</option>
+      <option value="claude">claude</option>
+      <option value="custom">custom</option>
+    </select>
+    <button id="run-btn" onclick="triggerRun()"
+      class="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition flex items-center gap-2">
+      <span id="run-icon">▶</span>
+      <span id="run-label">Run Pipeline</span>
+    </button>
+  </div>
+</header>
+
+<!-- Status bar -->
+<div id="status-bar" class="hidden bg-indigo-50 border-b border-indigo-100 px-6 py-2 text-sm text-indigo-700 flex items-center gap-2">
+  <svg class="animate-spin h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+  </svg>
+  <span id="status-text">Pipeline running…</span>
+</div>
+
+<!-- Stats row -->
+<div class="px-6 py-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+  <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+    <div class="text-2xl font-bold text-green-600" id="stat-approved">—</div>
+    <div class="text-xs text-gray-500 mt-1">✅ Approved Messages</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+    <div class="text-2xl font-bold text-yellow-500" id="stat-review">—</div>
+    <div class="text-xs text-gray-500 mt-1">👀 Needs Review</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+    <div class="text-2xl font-bold text-gray-700" id="stat-contacted">—</div>
+    <div class="text-xs text-gray-500 mt-1">📋 Total Contacted</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+    <div class="text-2xl font-bold text-indigo-500" id="stat-runs">—</div>
+    <div class="text-xs text-gray-500 mt-1">🔄 Pipeline Runs</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="px-6">
+  <div class="flex gap-0 border-b border-gray-200 mb-5">
+    <button onclick="switchTab('approved')" id="tab-approved" class="tab-active px-5 py-2 text-sm">Approved Messages</button>
+    <button onclick="switchTab('review')" id="tab-review" class="px-5 py-2 text-sm text-gray-500 hover:text-gray-700">Review Queue</button>
+    <button onclick="switchTab('runs')" id="tab-runs" class="px-5 py-2 text-sm text-gray-500 hover:text-gray-700">Run History</button>
+  </div>
+
+  <!-- Approved tab -->
+  <div id="pane-approved" class="fade">
+    <div id="approved-list" class="space-y-4 pb-8"></div>
+    <div id="approved-empty" class="hidden text-center text-gray-400 py-16 text-sm">No approved messages yet. Run the pipeline to generate some.</div>
+  </div>
+
+  <!-- Review tab -->
+  <div id="pane-review" class="hidden fade">
+    <div id="review-list" class="space-y-4 pb-8"></div>
+    <div id="review-empty" class="hidden text-center text-gray-400 py-16 text-sm">Review queue is empty.</div>
+  </div>
+
+  <!-- Runs tab -->
+  <div id="pane-runs" class="hidden fade">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+          <tr>
+            <th class="text-left px-4 py-3">Run ID</th>
+            <th class="text-left px-4 py-3">Date</th>
+            <th class="text-left px-4 py-3">Mode</th>
+            <th class="text-center px-4 py-3">Found</th>
+            <th class="text-center px-4 py-3">✅ Approved</th>
+            <th class="text-center px-4 py-3">👀 Review</th>
+            <th class="text-center px-4 py-3">⏭ Skipped</th>
+            <th class="text-center px-4 py-3">❌ Errors</th>
+            <th class="text-right px-4 py-3">Duration</th>
+          </tr>
+        </thead>
+        <tbody id="runs-table" class="divide-y divide-gray-100"></tbody>
+      </table>
+      <div id="runs-empty" class="hidden text-center text-gray-400 py-12 text-sm">No runs yet.</div>
+    </div>
+    <div class="pb-8"></div>
+  </div>
+</div>
+
+<!-- Email Preview Modal -->
+<div id="preview-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closePreview()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 z-50 flex flex-col max-h-[90vh]">
+    <!-- Modal header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">📧</span>
+        <span class="font-semibold text-gray-900">Email Preview</span>
+      </div>
+      <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+    </div>
+
+    <!-- Email chrome -->
+    <div class="overflow-y-auto px-6 py-5 space-y-4">
+      <!-- Headers -->
+      <div class="bg-gray-50 rounded-xl divide-y divide-gray-100 text-sm">
+        <div class="flex gap-3 px-4 py-2.5">
+          <span class="text-gray-400 w-12 shrink-0 font-medium">To</span>
+          <span id="prev-to" class="text-gray-800 font-medium"></span>
+        </div>
+        <div class="flex gap-3 px-4 py-2.5">
+          <span class="text-gray-400 w-12 shrink-0 font-medium">From</span>
+          <span id="prev-from" class="text-gray-500">VoiceCare.ai &lt;<span id="prev-from-addr" class="text-gray-700">your SMTP address</span>&gt;</span>
+        </div>
+        <div class="flex gap-3 px-4 py-2.5">
+          <span class="text-gray-400 w-12 shrink-0 font-medium">Re</span>
+          <span id="prev-subject" class="text-gray-800"></span>
+        </div>
+      </div>
+
+      <!-- Signal context chip -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-gray-400">Signal used:</span>
+        <span id="prev-signal" class="bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-full font-medium"></span>
+        <span class="text-gray-400 ml-auto">Score: <span id="prev-score" class="font-semibold text-gray-700"></span>/3.0</span>
+      </div>
+
+      <!-- Message body — what the prospect actually reads -->
+      <div class="border border-gray-200 rounded-xl p-5">
+        <p id="prev-body" class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap"></p>
+      </div>
+
+      <!-- Char count -->
+      <div class="flex items-center justify-between text-xs text-gray-400">
+        <span>LinkedIn message length: <span id="prev-chars" class="font-semibold"></span> / 300 chars
+          <span id="prev-chars-warn" class="hidden text-red-500 ml-1">⚠ over limit</span>
+        </span>
+        <span id="prev-score-breakdown" class="space-x-3"></span>
+      </div>
+    </div>
+
+    <!-- Modal actions -->
+    <div class="flex items-center gap-3 px-6 py-4 border-t border-gray-100">
+      <button id="prev-copy-btn" onclick="previewCopy()"
+        class="flex-1 border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 text-sm py-2 rounded-lg transition">
+        📋 Copy message
+      </button>
+      <button id="prev-send-btn"
+        class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white text-sm py-2 rounded-lg transition">
+        📧 Send email
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 right-6 hidden z-50 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg"></div>
+
+<script>
+  let currentTab = 'approved';
+
+  // ── Load on startup ────────────────────────────────────────────────────────
+  async function loadAll() {
+    await Promise.all([loadStats(), loadApproved(), loadReview(), loadRuns()]);
+  }
+
+  async function loadStats() {
+    const r = await fetch('/api/stats').catch(() => null);
+    if (!r || !r.ok) return;
+    const d = await r.json();
+    document.getElementById('stat-approved').textContent = d.approved ?? 0;
+    document.getElementById('stat-review').textContent = d.review_needed ?? 0;
+    document.getElementById('stat-contacted').textContent = d.contacted ?? 0;
+    document.getElementById('stat-runs').textContent = d.total_runs ?? 0;
+    const badge = document.getElementById('mode-badge');
+    badge.textContent = d.mode || '—';
+    badge.className = `ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+      d.mode === 'claude' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+    }`;
+  }
+
+  async function loadApproved() {
+    const r = await fetch('/api/approved').catch(() => null);
+    if (!r || !r.ok) return;
+    const items = await r.json();
+    const list = document.getElementById('approved-list');
+    const empty = document.getElementById('approved-empty');
+    list.innerHTML = '';
+    if (!items.length) { empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    items.forEach(m => list.appendChild(approvedCard(m)));
+  }
+
+  async function loadReview() {
+    const r = await fetch('/api/review').catch(() => null);
+    if (!r || !r.ok) return;
+    const items = await r.json();
+    const list = document.getElementById('review-list');
+    const empty = document.getElementById('review-empty');
+    list.innerHTML = '';
+    if (!items.length) { empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    items.forEach(m => list.appendChild(reviewCard(m)));
+  }
+
+  async function loadRuns() {
+    const r = await fetch('/api/runs').catch(() => null);
+    if (!r || !r.ok) return;
+    const items = await r.json();
+    const tbody = document.getElementById('runs-table');
+    const empty = document.getElementById('runs-empty');
+    tbody.innerHTML = '';
+    if (!items.length) { empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    items.forEach(run => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-50';
+      const date = run.started_at ? run.started_at.slice(0,16).replace('T',' ') : '—';
+      const dur = run.duration_seconds ? `${run.duration_seconds}s` : '—';
+      tr.innerHTML = `
+        <td class="px-4 py-3 font-mono text-xs text-gray-500">${run.run_id?.slice(-12) ?? '—'}</td>
+        <td class="px-4 py-3 text-gray-600">${date}</td>
+        <td class="px-4 py-3"><span class="text-xs px-2 py-0.5 rounded-full ${run.mode === 'claude' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${run.mode ?? '—'}</span></td>
+        <td class="px-4 py-3 text-center">${run.prospects_found ?? 0}</td>
+        <td class="px-4 py-3 text-center text-green-600 font-medium">${run.approved ?? 0}</td>
+        <td class="px-4 py-3 text-center text-yellow-600">${run.review_needed ?? 0}</td>
+        <td class="px-4 py-3 text-center text-gray-400">${run.skipped ?? 0}</td>
+        <td class="px-4 py-3 text-center text-red-400">${run.errors ?? 0}</td>
+        <td class="px-4 py-3 text-right text-gray-500">${dur}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ── Card builders ──────────────────────────────────────────────────────────
+  function scoreBar(val) {
+    const pct = Math.round((val / 3) * 100);
+    const col = pct >= 80 ? 'bg-green-400' : pct >= 55 ? 'bg-yellow-400' : 'bg-red-400';
+    return `<div class="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden inline-block align-middle">
+      <div class="${col} h-full rounded-full" style="width:${pct}%"></div></div>`;
+  }
+
+  function approvedCard(m) {
+    const div = document.createElement('div');
+    div.className = 'card bg-white border border-gray-100 rounded-xl p-5 shadow-sm fade transition';
+    div.innerHTML = `
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div class="font-semibold text-gray-900">${esc(m.name)}</div>
+          <div class="text-xs text-gray-500 mt-0.5">${esc(m.title ?? '')} · ${esc(m.company)}</div>
+          <div class="mt-1.5 text-xs text-indigo-600 bg-indigo-50 inline-block px-2 py-0.5 rounded-full">
+            Signal: ${esc(m.signal_type?.replace(/_/g,' ') ?? '')}
+          </div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-sm font-semibold text-gray-700">${(m.total_score ?? 0).toFixed(2)}<span class="text-gray-400 font-normal">/3.0</span></div>
+          <div class="text-xs text-gray-400 mt-0.5 space-x-2">
+            <span title="Specificity">S:${(m.specificity??0).toFixed(1)}</span>
+            <span title="Relevance">R:${(m.relevance??0).toFixed(1)}</span>
+            <span title="Naturalness">N:${(m.naturalness??0).toFixed(1)}</span>
+          </div>
+          <div class="mt-1">${scoreBar(m.total_score ?? 0)}</div>
+        </div>
+      </div>
+      <pre class="mt-3 text-sm text-gray-700 bg-gray-50 rounded-lg p-3 leading-relaxed">${esc(m.message)}</pre>
+      <div class="mt-3 flex items-center gap-2 flex-wrap">
+        <button onclick="copyText(this, ${JSON.stringify(m.message)})"
+          class="text-xs border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 px-3 py-1.5 rounded-lg transition">
+          📋 Copy
+        </button>
+        <button onclick='openPreview(${JSON.stringify(m)})'
+          class="text-xs bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-lg transition">
+          � Preview & Send
+        </button>
+        <span class="text-xs text-gray-400 ml-auto">${(m.processed_at ?? '').slice(0,16).replace('T',' ')}</span>
+      </div>`;
+    return div;
+  }
+
+  function reviewCard(m) {
+    const div = document.createElement('div');
+    div.className = 'card bg-white border border-yellow-100 rounded-xl p-5 shadow-sm fade transition';
+    div.innerHTML = `
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div class="font-semibold text-gray-900">${esc(m.name)}</div>
+          <div class="text-xs text-gray-500 mt-0.5">${esc(m.company)}</div>
+          <div class="mt-1.5 text-xs text-yellow-700 bg-yellow-50 inline-block px-2 py-0.5 rounded-full">
+            👀 Needs review · Score: ${(m.total_score ?? 0).toFixed(2)}/3.0
+          </div>
+        </div>
+      </div>
+      ${m.message ? `<pre class="mt-3 text-sm text-gray-700 bg-gray-50 rounded-lg p-3 leading-relaxed">${esc(m.message)}</pre>` : ''}
+      <div class="mt-2 text-xs text-red-500 bg-red-50 rounded px-3 py-2">
+        <strong>Why rejected:</strong> ${esc(m.feedback ?? 'No feedback available.')}
+      </div>
+      <div class="mt-3 flex items-center gap-2">
+        ${m.message ? `<button onclick="copyText(this, ${JSON.stringify(m.message)})"
+          class="text-xs border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 px-3 py-1.5 rounded-lg transition">
+          📋 Copy anyway
+        </button>` : ''}
+        <span class="text-xs text-gray-400 ml-auto">${(m.processed_at ?? '').slice(0,16).replace('T',' ')}</span>
+      </div>`;
+    return div;
+  }
+
+  // ── Email preview modal ────────────────────────────────────────────────────
+  let _previewRecord = null;
+
+  function openPreview(record) {
+    _previewRecord = record;
+    const chars = (record.message || '').length;
+
+    document.getElementById('prev-to').textContent =
+      record.email ? `${record.name} <${record.email}>` : `${record.name} (no email found)`;
+    document.getElementById('prev-subject').textContent =
+      `Quick note — ${record.name} at ${record.company}`;
+    document.getElementById('prev-body').textContent = record.message || '';
+    document.getElementById('prev-signal').textContent =
+      (record.signal_type || '').replace(/_/g, ' ');
+    document.getElementById('prev-score').textContent = (record.total_score || 0).toFixed(2);
+    document.getElementById('prev-chars').textContent = chars;
+
+    const warn = document.getElementById('prev-chars-warn');
+    warn.classList.toggle('hidden', chars <= 300);
+
+    document.getElementById('prev-score-breakdown').innerHTML =
+      `<span title="Specificity">S:${(record.specificity||0).toFixed(1)}</span>` +
+      `<span title="Relevance">R:${(record.relevance||0).toFixed(1)}</span>` +
+      `<span title="Naturalness">N:${(record.naturalness||0).toFixed(1)}</span>`;
+
+    const sendBtn = document.getElementById('prev-send-btn');
+    if (record.email) {
+      sendBtn.textContent = `📧 Send to ${record.email}`;
+      sendBtn.disabled = false;
+      sendBtn.className = 'flex-1 bg-indigo-500 hover:bg-indigo-600 text-white text-sm py-2 rounded-lg transition';
+      sendBtn.onclick = () => previewSend(record.id, sendBtn);
+    } else {
+      sendBtn.textContent = 'No email available';
+      sendBtn.disabled = true;
+      sendBtn.className = 'flex-1 bg-gray-200 text-gray-400 text-sm py-2 rounded-lg cursor-not-allowed';
+    }
+
+    document.getElementById('preview-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePreview() {
+    document.getElementById('preview-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    _previewRecord = null;
+  }
+
+  function previewCopy() {
+    if (!_previewRecord) return;
+    navigator.clipboard.writeText(_previewRecord.message || '').then(() => {
+      const btn = document.getElementById('prev-copy-btn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy message', 2000);
+    });
+  }
+
+  async function previewSend(id, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    const r = await fetch(`/api/send/${id}`, { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      btn.textContent = '✅ Sent!';
+      btn.className = btn.className.replace('bg-indigo-500 hover:bg-indigo-600', 'bg-green-500');
+      toast('Email sent successfully');
+      setTimeout(closePreview, 1500);
+    } else {
+      btn.disabled = false;
+      btn.textContent = `📧 Send to ${_previewRecord?.email}`;
+      toast(`Send failed: ${d.error}`, true);
+    }
+  }
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+  async function triggerRun() {
+    const btn = document.getElementById('run-btn');
+    const label = document.getElementById('run-label');
+    const icon = document.getElementById('run-icon');
+    const bar = document.getElementById('status-bar');
+    const statusText = document.getElementById('status-text');
+    const mode = document.getElementById('mode-select').value;
+
+    btn.disabled = true;
+    btn.classList.add('opacity-60');
+    label.textContent = 'Running…';
+    icon.textContent = '⏳';
+    bar.classList.remove('hidden');
+    statusText.textContent = `Pipeline running${mode ? ` in ${mode} mode` : ''}…`;
+
+    try {
+      const body = mode ? { mode } : {};
+      const r = await fetch('/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+      statusText.textContent = `✅ Done — ${data.approved} approved, ${data.review_needed} review, ${data.skipped} skipped in ${data.duration_seconds}s`;
+      bar.className = bar.className.replace('bg-indigo-50 border-indigo-100 text-indigo-700', 'bg-green-50 border-green-100 text-green-700');
+      toast(`Run complete: ${data.approved} approved, ${data.review_needed} review`);
+      await loadAll();
+      setTimeout(() => {
+        bar.classList.add('hidden');
+        bar.className = bar.className.replace('bg-green-50 border-green-100 text-green-700', 'bg-indigo-50 border-indigo-100 text-indigo-700');
+      }, 8000);
+    } catch (e) {
+      statusText.textContent = '❌ Run failed — check server logs';
+      bar.className = bar.className.replace('bg-indigo-50 border-indigo-100 text-indigo-700', 'bg-red-50 border-red-100 text-red-700');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('opacity-60');
+      label.textContent = 'Run Pipeline';
+      icon.textContent = '▶';
+    }
+  }
+
+  function copyText(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = orig, 2000);
+    });
+  }
+
+  function switchTab(tab) {
+    ['approved', 'review', 'runs'].forEach(t => {
+      document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== tab);
+      const tabEl = document.getElementById(`tab-${t}`);
+      if (t === tab) {
+        tabEl.classList.add('tab-active');
+        tabEl.classList.remove('text-gray-500');
+      } else {
+        tabEl.classList.remove('tab-active');
+        tabEl.classList.add('text-gray-500');
+      }
+    });
+    currentTab = tab;
+  }
+
+  function toast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `fixed bottom-6 right-6 z-50 text-sm px-4 py-2.5 rounded-xl shadow-lg ${isError ? 'bg-red-600' : 'bg-gray-900'} text-white`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  loadAll();
+</script>
+</body>
+</html>

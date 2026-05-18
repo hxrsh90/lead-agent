@@ -1,0 +1,10 @@
+.env
+voicecare.db
+logs/
+outputs/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
