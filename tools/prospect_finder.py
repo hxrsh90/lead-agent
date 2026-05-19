@@ -149,7 +149,7 @@ def _explorium_companies(n: int) -> List[Dict[str, Any]]:
     if not get_live_setting("VIBE_API_KEY", settings.vibe_api_key):
         return []
     try:
-        batch = min(n, 5)
+        batch = min(n, 25)
         resp = requests.post(
             f"{EXPLORIUM_BASE}/businesses",
             json={
@@ -184,7 +184,7 @@ def _explorium_prospects(business_ids: List[str], limit: int) -> List[Dict[str, 
     POST /prospects — search ICP contacts directly by job title + location.
     business_ids are used as a soft hint but we fall back to title-only if they yield nothing.
     """
-    batch = min(limit, 10)
+    batch = min(limit, 25)
 
     def _call(filters: dict) -> List[Dict[str, Any]]:
         try:
@@ -353,7 +353,7 @@ def find_prospects(limit: int = 20) -> List[ProspectModel]:
     # ── Source 2: Explorium businesses → Explorium prospects ─────────────────
     if len(prospects) < limit:
         needed = limit - len(prospects)
-        companies = _explorium_companies(min(needed, 5))
+        companies = _explorium_companies(min(needed * 3, 25))
 
         # Collect business_ids for the prospects call; mark domains as searched
         biz_ids = []

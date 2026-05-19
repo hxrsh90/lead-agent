@@ -32,7 +32,6 @@ def researcher_agent(state: AgentState) -> AgentState:
 
     if not signals:
         logger.info(f"[ResearcherAgent] No signals for {prospect.name} — sending to review queue")
-        mark_contacted(prospect.apollo_id, prospect.name, prospect.company, run_id)
         email_note = f" | email: {enriched.email}" if enriched.email else " | email: not found"
         save_review({
             "apollo_id": prospect.apollo_id,
