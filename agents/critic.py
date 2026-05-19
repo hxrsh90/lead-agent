@@ -4,6 +4,7 @@ from loguru import logger
 from agents.state import AgentState, ScoreResultModel
 from llm import call_llm
 from config import settings
+from database import get_live_setting
 
 CRITIC_SYSTEM_PROMPT = """\
 You are a strict quality evaluator for LinkedIn outreach messages targeting healthcare \
@@ -90,7 +91,7 @@ def critic_agent(state: AgentState) -> AgentState:
             relevance=relevance,
             naturalness=naturalness,
             total=total,
-            status="approved" if total >= settings.quality_threshold else "review_needed",
+            status="approved" if total >= float(get_live_setting("QUALITY_THRESHOLD", str(settings.quality_threshold))) else "review_needed",
             feedback=data.get("feedback", "No specific feedback provided."),
         )
         logger.info(

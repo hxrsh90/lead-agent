@@ -13,6 +13,7 @@ from database import (
     get_approved_messages, get_review_queue, get_run_history,
     get_dashboard_stats, get_approved_by_id,
     get_all_app_settings, set_app_setting, delete_app_setting,
+    get_live_setting,
 )
 from graph import build_graph
 from tools.prospect_finder import find_prospects
@@ -158,7 +159,8 @@ async def run_pipeline(mode_override: Optional[str] = None) -> Dict[str, Any]:
     init_db()
     graph = build_graph()
 
-    prospects = find_prospects(limit=settings.daily_prospect_limit)
+    prospect_limit = int(get_live_setting("DAILY_PROSPECT_LIMIT", str(settings.daily_prospect_limit)))
+    prospects = find_prospects(limit=prospect_limit)
     logger.info(f"Found {len(prospects)} new prospects")
 
     stats: Dict[str, Any] = {
