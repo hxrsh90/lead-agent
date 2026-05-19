@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import requests
 from loguru import logger
 from config import settings, icp
-from database import is_contacted, has_searched_company, mark_company_searched
+from database import is_contacted, has_searched_company, mark_company_searched, get_live_setting
 from agents.state import ProspectModel
 
 APOLLO_BASE = "https://api.apollo.io/api/v1"
@@ -17,16 +17,18 @@ _EMPLOYEE_BUCKETS = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-500
 # ── Auth headers ───────────────────────────────────────────────────────────────
 
 def _apollo_headers() -> Dict[str, str]:
-    return {"x-api-key": settings.apollo_api_key, "Content-Type": "application/json",
-            "Cache-Control": "no-cache"}
+    return {"x-api-key": get_live_setting("APOLLO_API_KEY", settings.apollo_api_key),
+            "Content-Type": "application/json", "Cache-Control": "no-cache"}
 
 
 def _explorium_headers() -> Dict[str, str]:
-    return {"API_KEY": settings.vibe_api_key, "Content-Type": "application/json"}
+    return {"API_KEY": get_live_setting("VIBE_API_KEY", settings.vibe_api_key),
+            "Content-Type": "application/json"}
 
 
 def _clay_headers() -> Dict[str, str]:
-    return {"Authorization": f"Bearer {settings.clay_api_key}", "Content-Type": "application/json"}
+    key = get_live_setting("CLAY_API_KEY", settings.clay_api_key)
+    return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
 def _stable_id(name: str, company: str) -> str:
@@ -67,7 +69,7 @@ def _apollo_search(limit: int) -> List[Dict[str, Any]]:
     Searches Apollo's database directly for ICP-matching contacts.
     Returns people with name, title, company, email (when available), linkedin_url.
     """
-    if not settings.apollo_api_key:
+    if not get_live_setting("APOLLO_API_KEY", settings.apollo_api_key):
         logger.debug("[ProspectFinder] No APOLLO_API_KEY — skipping Apollo search")
         return []
 
@@ -144,7 +146,7 @@ def _size_buckets() -> List[str]:
 
 def _explorium_companies(n: int) -> List[Dict[str, Any]]:
     """POST /businesses → list of {domain, name} for ICP-matching companies."""
-    if not settings.vibe_api_key:
+    if not get_live_setting("VIBE_API_KEY", settings.vibe_api_key):
         return []
     try:
         batch = min(n, 5)
@@ -258,7 +260,7 @@ def _clay_find_at_company(domain: str) -> Tuple[List[Dict[str, Any]], Optional[s
     POST /sources/person/find-at-company
     Returns (contacts_list, taskId). taskId stored on ProspectModel for enrichment.
     """
-    if not settings.clay_api_key:
+    if not get_live_setting("CLAY_API_KEY", settings.clay_api_key):
         return [], None
     logger.info(f"[ProspectFinder] Clay find-at-company: {domain}")
     try:

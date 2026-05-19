@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, List
 import requests
 from loguru import logger
 from config import settings, icp
+from database import get_live_setting
 from llm import call_llm
 from agents.state import ProspectModel, EnrichedProspectModel, EventModel
 
@@ -16,12 +17,13 @@ APOLLO_BASE_URL = "https://api.apollo.io/api/v1"
 # ── Auth headers ───────────────────────────────────────────────────────────────
 
 def _clay_headers() -> Dict[str, str]:
-    return {"Authorization": f"Bearer {settings.clay_api_key}", "Content-Type": "application/json"}
+    key = get_live_setting("CLAY_API_KEY", settings.clay_api_key)
+    return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
 def _apollo_headers() -> Dict[str, str]:
-    return {"x-api-key": settings.apollo_api_key, "Content-Type": "application/json",
-            "Cache-Control": "no-cache"}
+    return {"x-api-key": get_live_setting("APOLLO_API_KEY", settings.apollo_api_key),
+            "Content-Type": "application/json", "Cache-Control": "no-cache"}
 
 
 # ── Clay retry wrapper (shared with prospect_finder) ──────────────────────────
