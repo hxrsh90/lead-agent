@@ -12,6 +12,7 @@ from database import (
     init_db, save_run_stats,
     get_approved_messages, get_review_queue, get_run_history,
     get_dashboard_stats, get_approved_by_id,
+    get_all_app_settings, set_app_setting, delete_app_setting,
 )
 from graph import build_graph
 from tools.prospect_finder import find_prospects
@@ -87,6 +88,52 @@ def api_send(record_id: int):
         return jsonify(result), 200 if result["success"] else 502
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
+
+
+_SENSITIVE = {
+    "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY",
+    "NIM_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
+    "APOLLO_API_KEY", "CLAY_API_KEY", "VIBE_API_KEY", "SMTP_PASSWORD",
+}
+
+
+@app.get("/api/config")
+def api_config_get():
+    try:
+        init_db()
+        rows = get_all_app_settings()
+        out = {}
+        for key, value in rows.items():
+            masked = ("•" * 8) if key in _SENSITIVE and value else value
+            out[key] = {"value": masked, "source": "db"}
+        return jsonify(out)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.post("/api/config")
+def api_config_post():
+    try:
+        init_db()
+        data = request.get_json(silent=True) or {}
+        saved = []
+        for key, value in data.items():
+            if value and not str(value).startswith("•"):
+                set_app_setting(key, str(value))
+                saved.append(key)
+        return jsonify({"saved": saved})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.delete("/api/config/<key>")
+def api_config_delete(key: str):
+    try:
+        init_db()
+        delete_app_setting(key)
+        return jsonify({"deleted": key})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.post("/run")

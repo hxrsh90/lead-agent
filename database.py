@@ -74,6 +74,12 @@ def init_db() -> None:
                 errors           INTEGER DEFAULT 0,
                 duration_seconds REAL DEFAULT 0
             );
+
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key        TEXT PRIMARY KEY,
+                value      TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
     logger.info("Database initialized")
 
@@ -253,3 +259,36 @@ def save_run_stats(stats: Dict[str, Any]) -> None:
                 stats["errors"], stats["duration_seconds"],
             ),
         )
+
+
+def get_all_app_settings() -> Dict[str, str]:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
+    return {row["key"]: row["value"] for row in rows}
+
+
+def get_app_setting(key: str, default: str = "") -> str:
+    with get_connection() as conn:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_app_setting(key: str, value: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP",
+            (key, value),
+        )
+
+
+def delete_app_setting(key: str) -> None:
+    with get_connection() as conn:
+        conn.execute("DELETE FROM app_settings WHERE key = ?", (key,))
+
+
+def get_live_setting(key: str, env_fallback: str = "") -> str:
+    """Read from DB first, fall back to env/config value."""
+    import os
+    val = get_app_setting(key)
+    return val if val else (os.environ.get(key, "") or env_fallback)
