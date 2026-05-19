@@ -76,6 +76,7 @@
     <button onclick="switchTab('approved')" id="tab-approved" class="tab-active px-5 py-2 text-sm">Approved Messages</button>
     <button onclick="switchTab('review')" id="tab-review" class="px-5 py-2 text-sm text-gray-500 hover:text-gray-700">Review Queue</button>
     <button onclick="switchTab('runs')" id="tab-runs" class="px-5 py-2 text-sm text-gray-500 hover:text-gray-700">Run History</button>
+    <button onclick="switchTab('settings')" id="tab-settings" class="px-5 py-2 text-sm text-gray-500 hover:text-gray-700 ml-auto">⚙️ Settings</button>
   </div>
 
   <!-- Approved tab -->
@@ -112,6 +113,95 @@
       <div id="runs-empty" class="hidden text-center text-gray-400 py-12 text-sm">No runs yet.</div>
     </div>
     <div class="pb-8"></div>
+  </div>
+
+  <!-- Settings pane -->
+  <div id="pane-settings" class="hidden fade space-y-8 pb-8">
+
+    <!-- LLM Provider -->
+    <section>
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">LLM Provider</div>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-5">
+        <button onclick="selectProvider('openrouter')" id="pcard-openrouter"
+          class="provider-card border-2 border-indigo-400 bg-indigo-50 rounded-xl p-3 text-center cursor-pointer transition">
+          <div class="text-xl mb-1">🔀</div><div class="text-xs font-semibold text-gray-700">OpenRouter</div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Free models available</div>
+        </button>
+        <button onclick="selectProvider('openai')" id="pcard-openai"
+          class="provider-card border-2 border-gray-200 rounded-xl p-3 text-center cursor-pointer transition hover:border-indigo-300">
+          <div class="text-xl mb-1">🤖</div><div class="text-xs font-semibold text-gray-700">OpenAI</div>
+          <div class="text-[10px] text-gray-400 mt-0.5">GPT-4o / GPT-4o-mini</div>
+        </button>
+        <button onclick="selectProvider('anthropic')" id="pcard-anthropic"
+          class="provider-card border-2 border-gray-200 rounded-xl p-3 text-center cursor-pointer transition hover:border-indigo-300">
+          <div class="text-xl mb-1">🧠</div><div class="text-xs font-semibold text-gray-700">Anthropic</div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Claude 3.5 / Opus</div>
+        </button>
+        <button onclick="selectProvider('nim')" id="pcard-nim"
+          class="provider-card border-2 border-gray-200 rounded-xl p-3 text-center cursor-pointer transition hover:border-indigo-300">
+          <div class="text-xl mb-1">⚡</div><div class="text-xs font-semibold text-gray-700">NVIDIA NIM</div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Llama / Nemotron</div>
+        </button>
+        <button onclick="selectProvider('bedrock')" id="pcard-bedrock"
+          class="provider-card border-2 border-gray-200 rounded-xl p-3 text-center cursor-pointer transition hover:border-indigo-300">
+          <div class="text-xl mb-1">☁️</div><div class="text-xs font-semibold text-gray-700">AWS Bedrock</div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Claude via AWS</div>
+        </button>
+      </div>
+      <div id="fields-openrouter" class="provider-fields grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="cfg-label">OpenRouter API Key</label><div class="flex gap-2"><input id="f-OPENROUTER_API_KEY" class="cfg-input flex-1" type="password" placeholder="sk-or-v1-..."><button onclick="clearKey('OPENROUTER_API_KEY')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Model</label><div class="flex gap-2"><input id="f-OPENROUTER_MODEL" class="cfg-input flex-1" type="text" placeholder="mistralai/mixtral-8x7b-instruct"><button onclick="clearKey('OPENROUTER_MODEL')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <div id="fields-openai" class="provider-fields hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="cfg-label">OpenAI API Key</label><div class="flex gap-2"><input id="f-OPENAI_API_KEY" class="cfg-input flex-1" type="password" placeholder="sk-..."><button onclick="clearKey('OPENAI_API_KEY')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Model</label><div class="flex gap-2"><input id="f-OPENAI_MODEL" class="cfg-input flex-1" type="text" placeholder="gpt-4o-mini"><button onclick="clearKey('OPENAI_MODEL')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <div id="fields-anthropic" class="provider-fields hidden grid grid-cols-1 gap-3">
+        <div><label class="cfg-label">Anthropic API Key</label><div class="flex gap-2"><input id="f-ANTHROPIC_API_KEY" class="cfg-input flex-1" type="password" placeholder="sk-ant-..."><button onclick="clearKey('ANTHROPIC_API_KEY')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <div id="fields-nim" class="provider-fields hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="cfg-label">NVIDIA NIM API Key</label><div class="flex gap-2"><input id="f-NIM_API_KEY" class="cfg-input flex-1" type="password" placeholder="nvapi-..."><button onclick="clearKey('NIM_API_KEY')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Model</label><div class="flex gap-2"><input id="f-NIM_MODEL" class="cfg-input flex-1" type="text" placeholder="nvidia/llama-3.1-nemotron-70b-instruct"><button onclick="clearKey('NIM_MODEL')" class="cfg-clear">✕</button></div></div>
+        <div class="sm:col-span-2"><label class="cfg-label">Base URL</label><div class="flex gap-2"><input id="f-NIM_BASE_URL" class="cfg-input flex-1" type="text" placeholder="https://integrate.api.nvidia.com/v1"><button onclick="clearKey('NIM_BASE_URL')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <div id="fields-bedrock" class="provider-fields hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="cfg-label">AWS Access Key ID</label><div class="flex gap-2"><input id="f-AWS_ACCESS_KEY_ID" class="cfg-input flex-1" type="password" placeholder="AKIA..."><button onclick="clearKey('AWS_ACCESS_KEY_ID')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">AWS Secret Key</label><div class="flex gap-2"><input id="f-AWS_SECRET_ACCESS_KEY" class="cfg-input flex-1" type="password" placeholder="..."><button onclick="clearKey('AWS_SECRET_ACCESS_KEY')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Region</label><div class="flex gap-2"><input id="f-AWS_REGION" class="cfg-input flex-1" type="text" placeholder="us-east-1"><button onclick="clearKey('AWS_REGION')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Model ID</label><div class="flex gap-2"><input id="f-BEDROCK_MODEL_ID" class="cfg-input flex-1" type="text" placeholder="anthropic.claude-3-5-sonnet-20241022-v2:0"><button onclick="clearKey('BEDROCK_MODEL_ID')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <button onclick="saveLLM()" class="cfg-save mt-4">💾 Save LLM Settings</button>
+    </section>
+
+    <!-- Data Sources -->
+    <section>
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Data Sources</div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div><label class="cfg-label">Apollo API Key</label><div class="flex gap-2"><input id="f-APOLLO_API_KEY" class="cfg-input flex-1" type="password" placeholder="Paid plan for full access"><button onclick="clearKey('APOLLO_API_KEY')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Clay API Key</label><div class="flex gap-2"><input id="f-CLAY_API_KEY" class="cfg-input flex-1" type="password" placeholder="d12670b..."><button onclick="clearKey('CLAY_API_KEY')" class="cfg-clear">✕</button></div></div>
+        <div><label class="cfg-label">Explorium / Vibe API Key</label><div class="flex gap-2"><input id="f-VIBE_API_KEY" class="cfg-input flex-1" type="password" placeholder="38ce27d8..."><button onclick="clearKey('VIBE_API_KEY')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <button onclick="saveSection(['APOLLO_API_KEY','CLAY_API_KEY','VIBE_API_KEY'])" class="cfg-save mt-4">💾 Save Data Sources</button>
+    </section>
+
+    <!-- Pipeline Config -->
+    <section>
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Pipeline Config</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="cfg-label">Agent Mode</label>
+          <select id="f-AGENT_MODE" class="cfg-input w-full">
+            <option value="custom">custom (OpenRouter / OpenAI / NIM / Bedrock)</option>
+            <option value="claude">claude (Anthropic + Clay MCP)</option>
+          </select>
+        </div>
+        <div><label class="cfg-label">Daily Prospect Limit</label><input id="f-DAILY_PROSPECT_LIMIT" class="cfg-input w-full" type="number" placeholder="20" min="1" max="200"></div>
+        <div><label class="cfg-label">Quality Threshold (0–3.0)</label><input id="f-QUALITY_THRESHOLD" class="cfg-input w-full" type="number" placeholder="2.4" step="0.1" min="0" max="3"></div>
+        <div><label class="cfg-label">Slack Webhook URL</label><div class="flex gap-2"><input id="f-SLACK_WEBHOOK_URL" class="cfg-input flex-1" type="text" placeholder="https://hooks.slack.com/..."><button onclick="clearKey('SLACK_WEBHOOK_URL')" class="cfg-clear">✕</button></div></div>
+      </div>
+      <button onclick="saveSection(['AGENT_MODE','DAILY_PROSPECT_LIMIT','QUALITY_THRESHOLD','SLACK_WEBHOOK_URL'])" class="cfg-save mt-4">💾 Save Pipeline Config</button>
+    </section>
+
   </div>
 </div>
 
@@ -456,7 +546,7 @@
   }
 
   function switchTab(tab) {
-    ['approved', 'review', 'runs'].forEach(t => {
+    ['approved', 'review', 'runs', 'settings'].forEach(t => {
       document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== tab);
       const tabEl = document.getElementById(`tab-${t}`);
       if (t === tab) {
@@ -467,7 +557,88 @@
         tabEl.classList.add('text-gray-500');
       }
     });
+    if (tab === 'settings') loadConfig();
     currentTab = tab;
+  }
+
+  // ── Settings ────────────────────────────────────────────────
+  let _activeProvider = 'openrouter';
+
+  function selectProvider(p) {
+    _activeProvider = p;
+    document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('active'));
+    document.getElementById(`pcard-${p}`)?.classList.add('active');
+    document.querySelectorAll('.provider-fields').forEach(f => f.classList.add('hidden'));
+    document.getElementById(`fields-${p}`)?.classList.remove('hidden');
+  }
+
+  async function loadConfig() {
+    const r = await fetch('/api/config').catch(() => null);
+    if (!r?.ok) return;
+    const d = await r.json();
+    for (const [key, info] of Object.entries(d)) {
+      const el = document.getElementById(`f-${key}`);
+      if (el && info.value) {
+        if (el.tagName === 'SELECT') { el.value = info.value; }
+        else { el.placeholder = info.source === 'default' ? el.placeholder : info.value; }
+      }
+    }
+    const provider = d['LLM_PROVIDER']?.value;
+    if (provider && !provider.startsWith('•')) selectProvider(provider);
+    const mode = d['AGENT_MODE']?.value;
+    if (mode && !mode.startsWith('•')) {
+      const el = document.getElementById('f-AGENT_MODE');
+      if (el) el.value = mode;
+    }
+  }
+
+  async function saveLLM() {
+    const providerKeys = {
+      openrouter: ['OPENROUTER_API_KEY','OPENROUTER_MODEL'],
+      openai: ['OPENAI_API_KEY','OPENAI_MODEL'],
+      anthropic: ['ANTHROPIC_API_KEY'],
+      nim: ['NIM_API_KEY','NIM_MODEL','NIM_BASE_URL'],
+      bedrock: ['AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','AWS_REGION','BEDROCK_MODEL_ID'],
+    };
+    const data = { LLM_PROVIDER: _activeProvider };
+    (providerKeys[_activeProvider] || []).forEach(k => {
+      const v = document.getElementById(`f-${k}`)?.value?.trim();
+      if (v && !v.startsWith('•')) data[k] = v;
+    });
+    await _saveData(data);
+  }
+
+  async function saveSection(keys) {
+    const data = {};
+    keys.forEach(k => {
+      const el = document.getElementById(`f-${k}`);
+      if (!el) return;
+      const v = el.tagName === 'SELECT' ? el.value : el.value?.trim();
+      if (v && !v.startsWith('•')) data[k] = v;
+    });
+    await _saveData(data);
+  }
+
+  async function _saveData(data) {
+    if (!Object.keys(data).length) { toast('Nothing to save', true); return; }
+    const r = await fetch('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+    });
+    const d = await r.json();
+    if (d.saved?.length) { toast(`✅ Saved: ${d.saved.join(', ')}`); await loadConfig(); }
+    else toast('Nothing saved', true);
+  }
+
+  async function clearKey(key) {
+    const r = await fetch(`/api/config/${key}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.deleted) {
+      const el = document.getElementById(`f-${key}`);
+      if (el) el.value = '';
+      toast(`Cleared ${key}`);
+    }
   }
 
   function toast(msg, isError = false) {
@@ -484,5 +655,18 @@
 
   loadAll();
 </script>
+
+<style>
+  .cfg-label { display:block; font-size:11px; font-weight:500; color:#9ca3af; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em; }
+  .cfg-input { border:1px solid #e5e7eb; border-radius:8px; padding:7px 10px; font-size:13px; width:100%; outline:none; background:#fafafa; }
+  .cfg-input:focus { border-color:#6366f1; background:#fff; box-shadow:0 0 0 3px rgba(99,102,241,.1); }
+  .cfg-clear { border:1px solid #e5e7eb; border-radius:8px; padding:7px 10px; font-size:12px; color:#9ca3af; background:#fff; cursor:pointer; flex-shrink:0; }
+  .cfg-clear:hover { border-color:#ef4444; color:#ef4444; }
+  .cfg-save { background:linear-gradient(135deg,#6366f1,#7c3aed); color:#fff; font-size:13px; font-weight:500; padding:8px 20px; border-radius:10px; cursor:pointer; transition:opacity .15s; border:none; }
+  .cfg-save:hover { opacity:.88; }
+  .provider-card { background:#fff; }
+  .provider-card.active { border-color:#6366f1 !important; background:#eef2ff !important; }
+</style>
+
 </body>
 </html>
