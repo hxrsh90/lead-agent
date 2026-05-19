@@ -266,7 +266,7 @@ def _apollo_enrich(prospect: ProspectModel) -> Dict[str, Any]:
     Apollo /people/match — get full contact record by name + company.
     Returns email + employment_history for signal extraction.
     """
-    if not settings.apollo_api_key:
+    if not get_live_setting("APOLLO_API_KEY", settings.apollo_api_key):
         return {}
     try:
         resp = requests.post(
@@ -303,7 +303,7 @@ def _signals_from_apollo(person: Dict[str, Any], prospect: ProspectModel) -> Lis
 
     # Detect recent start (within ~90 days) by checking start_date year/month
     start_date = current.get("start_date") or ""
-    event_type = "job_change" if start_date and "2024" in start_date or "2025" in start_date else "work_background"
+    event_type = "job_change" if start_date and ("2024" in start_date or "2025" in start_date or "2026" in start_date) else "work_background"
 
     return [EventModel(
         type=event_type,
@@ -333,7 +333,7 @@ def _enrich_custom(prospect: ProspectModel) -> EnrichedProspectModel:
         events = []
         person: Dict[str, Any] = {}
 
-        if not email and settings.apollo_api_key:
+        if not email and get_live_setting("APOLLO_API_KEY", settings.apollo_api_key):
             person = _apollo_enrich(prospect)
             email = person.get("email")
 
